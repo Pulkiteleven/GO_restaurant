@@ -1,12 +1,12 @@
-package controller
+package controllers
 
 import (
 	"context"
 	"fmt"
-	"golang-restaurant-management/database"
-	"golang-restaurant-management/models"
 	"log"
 	"net/http"
+	"restaurant_management/database"
+	"restaurant_management/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -85,7 +85,7 @@ func CreateTable() gin.HandlerFunc {
 		result, inserErr := tableCollection.InsertOne(ctx, table)
 
 		if inserErr != nil {
-			msg := fmt.Sprintf("Table was not created")
+			msg := fmt.Sprintf("Table item was not created")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 			return
 		}
@@ -111,8 +111,8 @@ func UpdateTable() gin.HandlerFunc {
 
 		var updateObj primitive.D
 
-		if table.Number_of_guests != nil {
-			updateObj = append(updateObj, bson.E{"number_of_guests", table.Number_of_guests})
+		if table.Number_of_guest != nil {
+			updateObj = append(updateObj, bson.E{"number_of_guests", table.Number_of_guest})
 		}
 
 		if table.Table_number != nil {
@@ -157,21 +157,17 @@ func DeleteAllTables() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
-		
+		// Specify the filter to identify the document(s) to delete
 
-    // Specify the filter to identify the document(s) to delete
-    
+		// Delete the document matching the filter
+		result, err := tableCollection.DeleteMany(ctx, bson.M{})
+		if err != nil {
+			fmt.Println("Error deleting the document:", err)
+			return
+		}
+		defer cancel()
 
-    // Delete the document matching the filter
-    result, err := tableCollection.DeleteMany(ctx, bson.M{})
-    if err != nil {
-        fmt.Println("Error deleting the document:", err)
-        return 
-    }
-	defer cancel()
+		c.JSON(http.StatusOK, result)
 
-    c.JSON(http.StatusOK, result)
- 
+	}
 }
-}
-

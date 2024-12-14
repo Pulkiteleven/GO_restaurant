@@ -1,12 +1,12 @@
-package controller
+package controllers
 
 import (
 	"context"
 	"fmt"
-	"golang-restaurant-management/database"
-	"golang-restaurant-management/models"
 	"log"
 	"net/http"
+	"restaurant_management/database"
+	"restaurant_management/models"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,38 +24,31 @@ func GetOrders() gin.HandlerFunc {
 
 		result, err := orderCollection.Find(context.TODO(), bson.M{})
 		defer cancel()
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error occured while listing order items"})
 		}
 
 		var allOrders []bson.M
-
 		if err = result.All(ctx, &allOrders); err != nil {
 			log.Fatal(err)
 		}
-
 		c.JSON(http.StatusOK, allOrders)
-
 	}
 }
 
 func GetOrder() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-		orderId := c.Param("order_id")
 
+		orderId := c.Param("order_id")
 		var order models.Order
 
 		err := orderCollection.FindOne(ctx, bson.M{"order_id": orderId}).Decode(&order)
 
 		defer cancel()
-
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "error occured while fetching the order"})
-			return
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error occured while fetching the order item"})
 		}
-
 		c.JSON(http.StatusOK, order)
 	}
 }
@@ -111,10 +104,12 @@ func CreateOrder() gin.HandlerFunc {
 
 func UpdateOrder() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		var table models.Table
 		var order models.Order
+
+		var updateObj primitive.D
 
 		orderId := c.Param("order_id")
 
@@ -123,19 +118,15 @@ func UpdateOrder() gin.HandlerFunc {
 			return
 		}
 
-		var updateObj primitive.D
-
 		if order.Table_id != nil {
 			err := tableCollection.FindOne(ctx, bson.M{"table_id": order.Table_id}).Decode(&table)
 			defer cancel()
-
 			if err != nil {
-				msg := fmt.Sprintf("Table not found")
+				msg := fmt.Sprintf("Table was not found")
 				c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
+				return
 			}
-
 			updateObj = append(updateObj, bson.E{"table_id", order.Table_id})
-
 		}
 
 		order.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
@@ -157,75 +148,28 @@ func UpdateOrder() gin.HandlerFunc {
 			&opt,
 		)
 
-		if err!=nil{
+		if err != nil {
 			msg := fmt.Sprintf("order item not updated")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 			return
 		}
 
 		defer cancel()
-		c.JSON(http.StatusOK,result)
-
+		c.JSON(http.StatusOK, result)
 	}
 }
 
-
-func OrderItemOrderCreator(order models.Order) string {
-	var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-
+func OrderItemOrderCreator(order models.Order) string{
+	ctx,cancel := context.WithTimeout(context.Background(),100*time.Second)
 	order.Created_at,_ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 	order.Updated_at,_ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-
 	order.ID = primitive.NewObjectID()
 	order.Order_id = order.ID.Hex()
 
-	orderCollection.InsertOne(ctx, order)
+	orderCollection.InsertOne(ctx,order)
 	defer cancel()
 
 	return order.Order_id
 
-}
-
-func DeleteOrder() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-
-		orderId := c.Param("order_id")
-
-    // Specify the filter to identify the document(s) to delete
-    filter := bson.M{"order_id": orderId}
-
-    // Delete the document matching the filter
-    result, err := orderCollection.DeleteOne(ctx, filter)
-    if err != nil {
-        fmt.Println("Error deleting document:", err)
-        return 
-    }
-	defer cancel()
-
-    c.JSON(http.StatusOK, result)
- 
-}
-}
-
-func DeleteAllOrders() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
-
-		
-
-    // Specify the filter to identify the document(s) to delete
-    
-
-    // Delete the document matching the filter
-    result, err := orderCollection.DeleteMany(ctx, bson.M{})
-    if err != nil {
-        fmt.Println("Error deleting document:", err)
-        return 
-    }
-	defer cancel()
-
-    c.JSON(http.StatusOK, result)
- 
-}
+ 	
 }

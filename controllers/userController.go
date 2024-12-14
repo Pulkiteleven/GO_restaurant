@@ -1,13 +1,13 @@
-package controller
+package controllers
 
 import (
 	"context"
 	"fmt"
-	"golang-restaurant-management/database"
-	"golang-restaurant-management/helpers"
-	"golang-restaurant-management/models"
 	"log"
 	"net/http"
+	"restaurant_management/database"
+	"restaurant_management/helpers"
+	"restaurant_management/models"
 	"strconv"
 	"time"
 

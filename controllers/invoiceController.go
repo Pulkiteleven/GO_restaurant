@@ -1,10 +1,10 @@
-package controller
+package controllers
 
 import (
 	"context"
 	"fmt"
-	"golang-restaurant-management/database"
-	"golang-restaurant-management/models"
+	"restaurant_management/database"
+	"restaurant_management/models"
 	"log"
 	"net/http"
 	"time"
@@ -71,55 +71,41 @@ func CreateInvoice() gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, err.Error())
 			return
 		}
+		var order models.Order
 
-		allOrderItems, err := ItemsByOrder2(invoice.Order_id)
-
+		err := orderCollection.FindOne(ctx, bson.M{"order_id":invoice.Order_id}).Decode(&order)
 		defer cancel()
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "error occured while listing order item"})
+		if err != nil{
+			msg := fmt.Sprintf("message : Order was Not found")
+			c.JSON(http.StatusInternalServerError, gin.H{"error":msg})
 			return
 		}
-
-		invoice.Items_ordered = allOrderItems
-
-		 total := 0
-
-		for _, orderItem := range allOrderItems{
-			total = total + int(orderItem.Amount)
-		}
-		
-		invoice.Payment_amount = &total
-
-		status := "PENDING"
-
-		if invoice.Payment_status == nil {
-			invoice.Payment_status = &status
+		staus := "PENDING"
+		if invoice.Payment_status == nil{
+			invoice.Payment_status = &staus
 		}
 
-		invoice.Payment_due_date, _ = time.Parse(time.RFC3339, time.Now().AddDate(0, 0, 1).Format(time.RFC3339))
-
+		invoice.Payment_due_date, _ = time.Parse(time.RFC3339, time.Now().AddDate(0,0,1).Format(time.RFC3339))
 		invoice.Created_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 		invoice.Updated_at, _ = time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
-
 		invoice.ID = primitive.NewObjectID()
+
 		invoice.Invoice_id = invoice.ID.Hex()
-
 		validationErr := validate.Struct(invoice)
-
-		if validationErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": validationErr.Error()})
+		if validationErr != nil{
+			c.JSON(http.StatusBadRequest,gin.H{"erro":validationErr.Error()})
 			return
 		}
-
-		result, insertErr := invoiceCollection.InsertOne(ctx, invoice)
-		if insertErr != nil {
-			msg := fmt.Sprintf("invoice item not created")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
-			return
+		result,insertErr := invoiceCollection.InsertOne(ctx,invoice)
+		if insertErr != nil{
+			msg := fmt.Sprintf("Invoice Item was not created")
+			c.JSON(http.StatusInternalServerError,gin.H{"error":msg})
 		}
+		defer cancel()
 
-		c.JSON(http.StatusOK, result)
+		c.JSON(http.StatusOK,result)
+
+	
 
 	}
 }
